@@ -3,23 +3,34 @@ import { useState } from 'react';
 
 export default function RunButton() {
   const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState('');
+  const [status, setStatus] = useState(null); // { type: 'success' | 'error', text }
 
   async function handleRun() {
     setLoading(true);
-    setMessage('');
-    const res = await fetch('/api/trigger-scrape', { method: 'POST' });
-    const data = await res.json();
-    setMessage(res.ok ? 'Workflow dijalankan!' : data.error);
-    setLoading(false);
+    setStatus(null);
+    try {
+      const res = await fetch('/api/trigger-scrape', { method: 'POST' });
+      const data = await res.json();
+      setStatus(
+        res.ok
+          ? { type: 'success', text: 'Workflow dijalankan' }
+          : { type: 'error', text: data.error || 'Gagal menjalankan workflow' }
+      );
+    } catch {
+      setStatus({ type: 'error', text: 'Gagal menjalankan workflow' });
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div>
-      <button onClick={handleRun} disabled={loading}>
-        {loading ? 'Menjalankan...' : 'Cari Listing Baru'}
+    <div className="run-control">
+      <button className="btn btn-primary" onClick={handleRun} disabled={loading}>
+        {loading ? 'Menjalankan…' : 'Cari Listing Baru'}
       </button>
-      {message && <p>{message}</p>}
+      {status && (
+        <p className={`run-status run-status--${status.type}`}>{status.text}</p>
+      )}
     </div>
   );
 }
