@@ -130,7 +130,7 @@ export default function ListingTable() {
             )}
 
             <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              
+              <a
                 href={selected.listing_url}
                 target="_blank"
                 rel="noreferrer"
@@ -139,7 +139,7 @@ export default function ListingTable() {
                 Buka di Facebook
               </a>
               {waLink && (
-                
+                <a
                   href={waLink}
                   target="_blank"
                   rel="noreferrer"
