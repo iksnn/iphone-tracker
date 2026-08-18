@@ -1,6 +1,12 @@
 export async function POST() {
   try {
-    const res = await fetch(process.env.N8N_WEBHOOK_URL, { method: 'POST' });
+    const res = await fetch(process.env.N8N_WEBHOOK_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'INGEST_SECRET': process.env.INGEST_SECRET // Tambahkan header ini
+      }
+    });
 
     if (!res.ok) {
       const errorText = await res.text();
