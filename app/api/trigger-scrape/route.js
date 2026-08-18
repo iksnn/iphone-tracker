@@ -1,9 +1,4 @@
-export async function POST(req) {
-  const authHeader = req.headers.get('authorization') || '';
-  if (authHeader !== `Bearer ${process.env.INGEST_SECRET}`) {
-    return Response.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
+export async function POST() {
   const res = await fetch(process.env.N8N_WEBHOOK_URL, { method: 'POST' });
 
   if (!res.ok) {
