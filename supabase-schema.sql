@@ -1,6 +1,5 @@
--- Jalankan ini sekali di Supabase SQL editor untuk bikin tabelnya
 create table if not exists listings (
-  id text primary key,               -- Facebook listing id, dipakai buat anti-duplikat
+  id text primary key,               
   title text,
   description text,
   price_amount numeric,
@@ -9,9 +8,9 @@ create table if not exists listings (
   photo_url text,
   listing_url text,
   phone text,
-  verdict boolean,                   -- true = garansi resmi, false = ditolak
+  verdict boolean,                   
   reason text,
-  source text default 'keyword',     -- 'keyword' atau 'ai'
+  source text default 'keyword',   
   posted_at timestamptz,
   scraped_at timestamptz default now()
 );

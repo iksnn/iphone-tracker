@@ -1,7 +1,5 @@
 import { getSupabaseServer } from '@/lib/supabase';
 
-// n8n HTTP Request node (POST) memanggil endpoint ini menggantikan node "Append row in sheet"
-// Header: Authorization: Bearer <INGEST_SECRET>
 export async function POST(req) {
   const authHeader = req.headers.get('authorization') || '';
   if (authHeader !== `Bearer ${process.env.INGEST_SECRET}`) {
@@ -37,16 +35,22 @@ export async function POST(req) {
   return Response.json({ ok: true });
 }
 
-// GET dipakai frontend untuk ambil daftar listing yang lolos verdict
-export async function GET() {
-  const supabase = getSupabaseServer();
-  const { data, error } = await supabase
-    .from('listings')
-    .select('*')
-    .eq('verdict', true)
-    .order('posted_at', { ascending: false })
-    .limit(100);
+export async function GET(req) {
+  const { searchParams } = new URL(req.url);
+  const minPrice = searchParams.get('minPrice');
+  const maxPrice = searchParams.get('maxPrice');
+  const location = searchParams.get('location');
 
+  const supabase = getSupabaseServer();
+  let query = supabase.from('listings').select('*').eq('verdict', true);
+
+  if (minPrice) query = query.gte('price_amount', minPrice);
+  if (maxPrice) query = query.lte('price_amount', maxPrice);
+  if (location) query = query.ilike('location', `%${location}%`);
+
+  query = query.order('posted_at', { ascending: false });
+
+  const { data, error } = await query;
   if (error) return Response.json({ error: error.message }, { status: 500 });
   return Response.json({ listings: data });
 }
