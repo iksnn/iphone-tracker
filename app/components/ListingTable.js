@@ -23,7 +23,7 @@ function buildWaLink(phone, title, price) {
   return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
 }
 
-export default function ListingTable({ listings, onChange }) {
+export default function ListingTable({ listings = [], onChange = () => {} }) {
   const [selected, setSelected] = useState(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [dragY, setDragY] = useState(0);
