@@ -9,8 +9,14 @@ function timeAgo(dateStr) {
   if (!dateStr) return '';
   const hours = Math.floor((Date.now() - new Date(dateStr).getTime()) / 3600000);
   if (hours < 1) return 'baru saja';
-  if (hours < 24) return `${hours} jam lalu`;
-  return `${Math.floor(hours / 24)} hari lalu`;
+  if (hours < 24) return hours + ' jam lalu';
+  return Math.floor(hours / 24) + ' hari lalu';
+}
+
+function buildWaLink(phone, title, price) {
+  if (!phone) return null;
+  const message = 'Halo, saya tertarik dengan ' + title + ' yang dijual seharga ' + price + '. Apakah masih tersedia?';
+  return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
 }
 
 export default function ListingTable() {
@@ -24,24 +30,26 @@ export default function ListingTable() {
     setListings(data.listings || []);
   }
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+  }, []);
 
   async function updateStatus(id, status) {
-    await fetch(`/api/listings/${id}`, {
+    await fetch('/api/listings/' + id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status: status }),
     });
     loadData();
   }
 
   async function saveNotes() {
-    await fetch(`/api/listings/${selected.id}`, {
+    await fetch('/api/listings/' + selected.id, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ notes: notesDraft }),
     });
-    setSelected({ ...selected, notes: notesDraft });
+    setSelected(Object.assign({}, selected, { notes: notesDraft }));
     loadData();
   }
 
@@ -49,6 +57,8 @@ export default function ListingTable() {
     setSelected(item);
     setNotesDraft(item.notes || '');
   }
+
+  const waLink = selected ? buildWaLink(selected.phone, selected.title, selected.price_formatted) : null;
 
   return (
     <div>
@@ -64,34 +74,36 @@ export default function ListingTable() {
           </tr>
         </thead>
         <tbody>
-          {listings.map((item) => (
-            <tr
-              key={item.id}
-              onClick={() => openDetail(item)}
-              style={{ borderBottom: '1px solid #221e1b', cursor: 'pointer' }}
-            >
-              <td style={{ padding: 8 }}>
-                {item.photo_url && (
-                  <img src={item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
-                )}
-              </td>
-              <td style={{ padding: 8 }}>{item.title}</td>
-              <td style={{ padding: 8, color: '#c9895f', fontWeight: 600 }}>{item.price_formatted}</td>
-              <td style={{ padding: 8, color: '#8a8177' }}>{item.location}</td>
-              <td style={{ padding: 8, color: '#8a8177' }}>{timeAgo(item.posted_at)}</td>
-              <td style={{ padding: 8 }} onClick={(e) => e.stopPropagation()}>
-                <select
-                  value={item.status || 'belum_dicek'}
-                  onChange={(e) => updateStatus(item.id, e.target.value)}
-                  style={{ background: '#1a1613', color: STATUS_COLOR[item.status] || '#8a8177', border: '1px solid #2a2521', borderRadius: 6, padding: '4px 8px' }}
-                >
-                  {STATUS_OPTIONS.map((s) => (
-                    <option key={s} value={s}>{STATUS_LABEL[s]}</option>
-                  ))}
-                </select>
-              </td>
-            </tr>
-          ))}
+          {listings.map(function (item) {
+            return (
+              <tr
+                key={item.id}
+                onClick={function () { openDetail(item); }}
+                style={{ borderBottom: '1px solid #221e1b', cursor: 'pointer' }}
+              >
+                <td style={{ padding: 8 }}>
+                  {item.photo_url && (
+                    <img src={item.photo_url} alt="" style={{ width: 44, height: 44, objectFit: 'cover', borderRadius: 6 }} />
+                  )}
+                </td>
+                <td style={{ padding: 8 }}>{item.title}</td>
+                <td style={{ padding: 8, color: '#c9895f', fontWeight: 600 }}>{item.price_formatted}</td>
+                <td style={{ padding: 8, color: '#8a8177' }}>{item.location}</td>
+                <td style={{ padding: 8, color: '#8a8177' }}>{timeAgo(item.posted_at)}</td>
+                <td style={{ padding: 8 }} onClick={function (e) { e.stopPropagation(); }}>
+                  <select
+                    value={item.status || 'belum_dicek'}
+                    onChange={function (e) { updateStatus(item.id, e.target.value); }}
+                    style={{ background: '#1a1613', color: STATUS_COLOR[item.status] || '#8a8177', border: '1px solid #2a2521', borderRadius: 6, padding: '4px 8px' }}
+                  >
+                    {STATUS_OPTIONS.map(function (s) {
+                      return <option key={s} value={s}>{STATUS_LABEL[s]}</option>;
+                    })}
+                  </select>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
 
@@ -126,9 +138,9 @@ export default function ListingTable() {
               >
                 Buka di Facebook
               </a>
-              {selected.phone && (
+              {waLink && (
                 
-                  href={`https://wa.me/${selected.phone}?text=${encodeURIComponent(`Halo, saya tertarik dengan ${selected.title} yang dijual seharga ${selected.price_formatted}. Apakah masih tersedia?`)}`}
+                  href={waLink}
                   target="_blank"
                   rel="noreferrer"
                   style={{ flex: 1, textAlign: 'center', background: '#2e7d32', color: '#fff', padding: '10px', borderRadius: 8, textDecoration: 'none' }}
@@ -137,16 +149,16 @@ export default function ListingTable() {
                 </a>
               )}
             </div>
-            {!selected.phone && (
+            {!waLink && (
               <p style={{ fontSize: 12, color: '#8a8177', marginBottom: 14 }}>
-                Nomor HP tidak ditemukan di deskripsi — hubungi lewat tombol "Buka di Facebook".
+                Nomor HP tidak ditemukan di deskripsi. Hubungi lewat tombol Buka di Facebook.
               </p>
             )}
 
             <label style={{ fontSize: 12, color: '#8a8177', display: 'block', marginBottom: 6 }}>Catatan pribadi</label>
             <textarea
               value={notesDraft}
-              onChange={(e) => setNotesDraft(e.target.value)}
+              onChange={function (e) { setNotesDraft(e.target.value); }}
               rows={3}
               style={{ width: '100%', background: '#0f0d0b', color: '#ece7e0', border: '1px solid #2a2521', borderRadius: 8, padding: 10, fontSize: 13, marginBottom: 10 }}
             />
@@ -154,7 +166,7 @@ export default function ListingTable() {
               <button onClick={saveNotes} style={{ flex: 1, padding: 10, borderRadius: 8, border: 'none', background: '#c9895f', color: '#1a1613', fontWeight: 600, cursor: 'pointer' }}>
                 Simpan Catatan
               </button>
-              <button onClick={() => setSelected(null)} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #2a2521', background: 'transparent', color: '#ece7e0', cursor: 'pointer' }}>
+              <button onClick={function () { setSelected(null); }} style={{ flex: 1, padding: 10, borderRadius: 8, border: '1px solid #2a2521', background: 'transparent', color: '#ece7e0', cursor: 'pointer' }}>
                 Tutup
               </button>
             </div>
