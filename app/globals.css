@@ -348,45 +348,88 @@ body {
   }
 }
 
-/* Status select (pill with color dot) */
-.status-select {
+/* Status dropdown */
+.status-dropdown {
   position: relative;
+  display: inline-block;
+}
+
+.status-dropdown-trigger {
   display: inline-flex;
-}
-
-.status-select::before {
-  content: '';
-  position: absolute;
-  left: 12px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--status-color, var(--neutral));
-  pointer-events: none;
-}
-
-.status-select select {
-  appearance: none;
-  -webkit-appearance: none;
+  align-items: center;
+  gap: 8px;
   background-color: var(--bg-subtle);
   border: 1px solid var(--border);
   border-radius: 999px;
-  padding: 6px 28px 6px 26px;
+  padding: 6px 10px 6px 12px;
   font-size: 12px;
   font-weight: 500;
   color: var(--text-primary);
   cursor: pointer;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%2364748B' fill='none' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
-  background-repeat: no-repeat;
-  background-position: right 10px center;
-  background-size: 10px;
+  font-family: inherit;
 }
 
-.status-select select:focus-visible {
+.status-dropdown-trigger:hover {
+  border-color: var(--border-strong);
+}
+
+.status-dropdown-trigger:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 2px;
+}
+
+.status-dropdown-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--dot-color, var(--neutral));
+  flex-shrink: 0;
+}
+
+.status-dropdown-chevron {
+  width: 10px;
+  height: 6px;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+.status-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 150px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: 0 12px 24px -10px rgba(15, 23, 42, 0.2);
+  padding: 4px;
+  z-index: 20;
+}
+
+.status-dropdown-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  text-align: left;
+}
+
+.status-dropdown-option:hover,
+.status-dropdown-option:focus-visible {
+  background: var(--bg-subtle);
+  outline: none;
+}
+
+.status-dropdown-option[aria-selected='true'] {
+  font-weight: 600;
 }
 
 /* Modal */

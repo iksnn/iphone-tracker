@@ -21,7 +21,6 @@ export default function DashboardClient() {
       const data = await res.json();
       setListings(data.listings || []);
     } catch {
-      // gagal diam-diam saat refresh latar belakang, tidak mengganggu tampilan
     }
   }, []);
 
@@ -71,6 +70,38 @@ export default function DashboardClient() {
     }
   }
 
+  function patchListingLocal(id, patch) {
+    setListings((prev) => prev.map((item) => (item.id === id ? { ...item, ...patch } : item)));
+  }
+
+  async function handleUpdateStatus(id, status) {
+    patchListingLocal(id, { status });
+    try {
+      const res = await fetch('/api/listings/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error('failed');
+    } catch {
+      loadData();
+    }
+  }
+
+  async function handleUpdateNotes(id, notes) {
+    patchListingLocal(id, { notes });
+    try {
+      const res = await fetch('/api/listings/' + id, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ notes }),
+      });
+      if (!res.ok) throw new Error('failed');
+    } catch {
+      loadData();
+    }
+  }
+
   const loading = submitting || polling;
   const label = submitting ? 'Menjalankan…' : polling ? 'Mencari listing…' : 'Cari Listing Baru';
 
@@ -83,7 +114,11 @@ export default function DashboardClient() {
         </div>
         <RunButton onRun={handleRun} loading={loading} label={label} status={runStatus} />
       </header>
-      <ListingTable listings={listings} onChange={loadData} />
+      <ListingTable
+        listings={listings}
+        onUpdateStatus={handleUpdateStatus}
+        onUpdateNotes={handleUpdateNotes}
+      />
     </>
   );
 }

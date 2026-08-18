@@ -19,34 +19,65 @@ function timeAgo(dateStr) {
 
 function buildWaLink(phone, title, price) {
   if (!phone) return null;
-  const message = 'Halo, saya tertarik dengan ' + title + ' yang dijual seharga ' + price + '. Apakah masih tersedia?';
+  const message =
+    'Halo, saya tertarik dengan ' + title + ' yang dijual seharga ' + price + '. Apakah masih tersedia?';
   return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
 }
 
-export default function ListingTable({ listings = [], onChange = () => {} }) {
+function StatusDropdown({ status, onSelect }) {
+  const [open, setOpen] = useState(false);
+  const meta = STATUS_META[status] || STATUS_META.belum_dicek;
+
+  function handleBlur(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="status-dropdown" onBlur={handleBlur}>
+      <button
+        type="button"
+        className="status-dropdown-trigger"
+        onClick={() => setOpen((v) => !v)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+      >
+        <span className="status-dropdown-dot" style={{ '--dot-color': meta.color }} />
+        {meta.label}
+        <svg className="status-dropdown-chevron" viewBox="0 0 10 6" fill="none">
+          <path d="M1 1l4 4 4-4" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+        </svg>
+      </button>
+      {open && (
+        <div className="status-dropdown-menu" role="listbox">
+          {STATUS_OPTIONS.map((s) => (
+            <button
+              type="button"
+              key={s}
+              role="option"
+              aria-selected={s === status}
+              className="status-dropdown-option"
+              onClick={() => {
+                onSelect(s);
+                setOpen(false);
+              }}
+            >
+              <span className="status-dropdown-dot" style={{ '--dot-color': STATUS_META[s].color }} />
+              {STATUS_META[s].label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNotes }) {
   const [selected, setSelected] = useState(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef(null);
-
-  async function updateStatus(id, status) {
-    await fetch('/api/listings/' + id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    onChange();
-  }
-
-  async function saveNotes() {
-    await fetch('/api/listings/' + selected.id, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ notes: notesDraft }),
-    });
-    setSelected((prev) => ({ ...prev, notes: notesDraft }));
-    onChange();
-  }
 
   function openDetail(item) {
     setSelected(item);
@@ -58,17 +89,22 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
     setDragY(0);
   }
 
-  function handleHandleTouchStart(e) {
+  function handleSaveNotes() {
+    onUpdateNotes(selected.id, notesDraft);
+    setSelected((prev) => (prev ? { ...prev, notes: notesDraft } : prev));
+  }
+
+  function handleTouchStart(e) {
     dragStartY.current = e.touches[0].clientY;
   }
 
-  function handleHandleTouchMove(e) {
+  function handleTouchMove(e) {
     if (dragStartY.current === null) return;
     const delta = e.touches[0].clientY - dragStartY.current;
     if (delta > 0) setDragY(delta);
   }
 
-  function handleHandleTouchEnd() {
+  function handleTouchEnd() {
     if (dragY > 80) {
       closeDetail();
     } else {
@@ -80,9 +116,7 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
   const waLink = selected
     ? buildWaLink(selected.phone, selected.title, selected.price_formatted)
     : null;
-  const selectedMeta = selected
-    ? STATUS_META[selected.status] || STATUS_META.belum_dicek
-    : null;
+  const selectedMeta = selected ? STATUS_META[selected.status] || STATUS_META.belum_dicek : null;
 
   return (
     <div>
@@ -106,34 +140,23 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
                 </td>
               </tr>
             ) : (
-              listings.map((item) => {
-                const meta = STATUS_META[item.status] || STATUS_META.belum_dicek;
-                return (
-                  <tr key={item.id} onClick={() => openDetail(item)}>
-                    <td className="col-photo">
-                      {item.photo_url && <img className="thumb" src={item.photo_url} alt="" />}
-                    </td>
-                    <td className="col-title">{item.title}</td>
-                    <td className="col-price">{item.price_formatted}</td>
-                    <td className="col-location">{item.location}</td>
-                    <td className="col-age">{timeAgo(item.posted_at)}</td>
-                    <td onClick={(e) => e.stopPropagation()}>
-                      <div className="status-select" style={{ '--status-color': meta.color }}>
-                        <select
-                          value={item.status || 'belum_dicek'}
-                          onChange={(e) => updateStatus(item.id, e.target.value)}
-                        >
-                          {STATUS_OPTIONS.map((s) => (
-                            <option key={s} value={s}>
-                              {STATUS_META[s].label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })
+              listings.map((item) => (
+                <tr key={item.id} onClick={() => openDetail(item)}>
+                  <td className="col-photo">
+                    {item.photo_url && <img className="thumb" src={item.photo_url} alt="" />}
+                  </td>
+                  <td className="col-title">{item.title}</td>
+                  <td className="col-price">{item.price_formatted}</td>
+                  <td className="col-location">{item.location}</td>
+                  <td className="col-age">{timeAgo(item.posted_at)}</td>
+                  <td onClick={(e) => e.stopPropagation()}>
+                    <StatusDropdown
+                      status={item.status || 'belum_dicek'}
+                      onSelect={(status) => onUpdateStatus(item.id, status)}
+                    />
+                  </td>
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -148,13 +171,11 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
           >
             <div
               className="modal-handle"
-              onTouchStart={handleHandleTouchStart}
-              onTouchMove={handleHandleTouchMove}
-              onTouchEnd={handleHandleTouchEnd}
+              onTouchStart={handleTouchStart}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
             />
-            {selected.photo_url && (
-              <img className="modal-image" src={selected.photo_url} alt="" />
-            )}
+            {selected.photo_url && <img className="modal-image" src={selected.photo_url} alt="" />}
             <div className="modal-body">
               <div className="modal-header">
                 <div>
@@ -185,19 +206,12 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
                     Chat WhatsApp
                   </a>
                 )}
-                
-                  className="btn btn-outline"
-                  href={selected.listing_url}
-                  target="_blank"
-                  rel="noreferrer"
-                <a>
+                <a className="btn btn-outline" href={selected.listing_url} target="_blank" rel="noreferrer">
                   Buka di Facebook
                 </a>
               </div>
               {!waLink && (
-                <p className="modal-note">
-                  Nomor HP tidak ditemukan di deskripsi. Hubungi lewat tombol di atas.
-                </p>
+                <p className="modal-note">Nomor HP tidak ditemukan di deskripsi. Hubungi lewat tombol di atas.</p>
               )}
 
               <div className="modal-notes">
@@ -209,7 +223,7 @@ export default function ListingTable({ listings = [], onChange = () => {} }) {
                   rows={3}
                 />
                 <div className="modal-notes-actions">
-                  <button className="btn btn-primary btn-sm" onClick={saveNotes}>
+                  <button className="btn btn-primary btn-sm" onClick={handleSaveNotes}>
                     Simpan Catatan
                   </button>
                   <button className="btn btn-ghost btn-sm" onClick={closeDetail}>
