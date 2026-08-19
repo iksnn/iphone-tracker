@@ -91,9 +91,17 @@ export default function DashboardClient() {
   return (
     <>
       <header className="page-header">
-        <div>
-          <p className="eyebrow">Pemantauan Pasar</p>
-          <h1>iPhone Garansi Resmi</h1>
+        <div className="title-block">
+          <div className="title-icon">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <rect x="6" y="2" width="12" height="20" rx="3" stroke="currentColor" strokeWidth="1.6" />
+              <path d="M10 18h4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+            </svg>
+          </div>
+          <div>
+            <p className="eyebrow">Pemantauan Marketplace</p>
+            <h1>iPhone Garansi Resmi</h1>
+          </div>
         </div>
         <RunButton onRun={handleRun} loading={loading} label={label} status={runStatus} />
       </header>

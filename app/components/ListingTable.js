@@ -3,10 +3,10 @@ import { useState, useRef, useMemo } from 'react';
 
 const STATUS_OPTIONS = ['belum_dicek', 'nego', 'deal', 'ga_tertarik'];
 const STATUS_META = {
-  belum_dicek: { label: 'Belum Dicek', color: 'var(--neutral)' },
-  nego: { label: 'Nego', color: 'var(--warning)' },
-  deal: { label: 'Deal', color: 'var(--success)' },
-  ga_tertarik: { label: 'Ga Tertarik', color: 'var(--danger)' },
+  belum_dicek: { label: 'Belum Dicek', color: 'var(--neutral)', tint: 'var(--neutral-tint)' },
+  nego: { label: 'Nego', color: 'var(--warning)', tint: 'var(--warning-tint)' },
+  deal: { label: 'Deal', color: 'var(--success)', tint: 'var(--success-tint)' },
+  ga_tertarik: { label: 'Ga Tertarik', color: 'var(--danger)', tint: 'var(--danger-tint)' },
 };
 
 const SORT_OPTIONS = [
@@ -36,9 +36,7 @@ function StatusDropdown({ status, onSelect }) {
   const meta = STATUS_META[status] || STATUS_META.belum_dicek;
 
   function handleBlur(e) {
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setOpen(false);
-    }
+    if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
   }
 
   return (
@@ -46,18 +44,22 @@ function StatusDropdown({ status, onSelect }) {
       <button
         type="button"
         className="status-dropdown-trigger"
-        onClick={() => setOpen((v) => !v)}
+        style={{ '--pill-tint': meta.tint, '--pill-color': meta.color }}
+        onClick={(e) => {
+          e.stopPropagation();
+          setOpen((v) => !v);
+        }}
         aria-haspopup="listbox"
         aria-expanded={open}
       >
         <span className="status-dropdown-dot" style={{ '--dot-color': meta.color }} />
         {meta.label}
         <svg className="status-dropdown-chevron" viewBox="0 0 10 6" fill="none">
-          <path d="M1 1l4 4 4-4" stroke="#64748B" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          <path d="M1 1l4 4 4-4" stroke="#78716C" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
       </button>
       {open && (
-        <div className="status-dropdown-menu" role="listbox">
+        <div className="status-dropdown-menu" role="listbox" onClick={(e) => e.stopPropagation()}>
           {STATUS_OPTIONS.map((s) => (
             <button
               type="button"
@@ -180,8 +182,8 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
           <div className="toolbar">
             <div className="search-field">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                <circle cx="7" cy="7" r="5.5" stroke="#64748B" strokeWidth="1.4" />
-                <path d="M11.5 11.5L14.5 14.5" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+                <circle cx="7" cy="7" r="5.5" stroke="#78716C" strokeWidth="1.4" />
+                <path d="M11.5 11.5L14.5 14.5" stroke="#78716C" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
               <input
                 type="text"
@@ -216,6 +218,7 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
             <button
               type="button"
               className={`filter-pill ${statusFilter === 'semua' ? 'active' : ''}`}
+              style={{ '--pill-tint': 'var(--accent-tint)', '--pill-color': 'var(--accent)' }}
               onClick={() => setStatusFilter('semua')}
             >
               Semua <span className="count">{counts.semua}</span>
@@ -225,6 +228,7 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
                 type="button"
                 key={s}
                 className={`filter-pill ${statusFilter === s ? 'active' : ''}`}
+                style={{ '--pill-tint': STATUS_META[s].tint, '--pill-color': STATUS_META[s].color }}
                 onClick={() => setStatusFilter(s)}
               >
                 {STATUS_META[s].label} <span className="count">{counts[s]}</span>
@@ -238,59 +242,71 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
         </>
       )}
 
-      <div className="table-scroll">
-        <table className="listing-table">
-          <thead>
-            <tr>
-              <th className="col-photo"></th>
-              <th>Judul</th>
-              <th>Harga</th>
-              <th className="col-location">Lokasi</th>
-              <th className="col-age">Umur</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {!hasAnyListing ? (
-              <tr>
-                <td colSpan={6} className="empty-state">
-                  Belum ada listing. Klik &quot;Cari Listing Baru&quot; untuk mulai memantau.
-                </td>
-              </tr>
-            ) : sorted.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="empty-state">
-                  Tidak ada listing yang cocok dengan pencarian atau filter.
-                  {hasActiveFilter && (
-                    <div className="empty-state-action">
-                      <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
-                        Hapus Filter
-                      </button>
+      <div className="listing-grid">
+        {!hasAnyListing ? (
+          <div className="state-panel">
+            <div className="state-panel-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+                <rect x="6" y="2" width="12" height="20" rx="3" stroke="currentColor" strokeWidth="1.6" />
+              </svg>
+            </div>
+            Belum ada listing. Klik &quot;Cari Listing Baru&quot; untuk mulai memantau.
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="state-panel">
+            Tidak ada listing yang cocok dengan pencarian atau filter.
+            {hasActiveFilter && (
+              <div className="state-panel-action">
+                <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
+                  Hapus Filter
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          sorted.map((item) => {
+            const meta = STATUS_META[item.status] || STATUS_META.belum_dicek;
+            return (
+              <div
+                key={item.id}
+                className="listing-card"
+                role="button"
+                tabIndex={0}
+                onClick={() => openDetail(item)}
+                onKeyDown={(e) => e.key === 'Enter' && openDetail(item)}
+              >
+                <div className="card-media">
+                  {item.photo_url ? (
+                    <img src={item.photo_url} alt="" />
+                  ) : (
+                    <div className="card-media-placeholder">
+                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                        <rect x="6" y="2" width="12" height="20" rx="3" stroke="currentColor" strokeWidth="1.5" />
+                      </svg>
                     </div>
                   )}
-                </td>
-              </tr>
-            ) : (
-              sorted.map((item) => (
-                <tr key={item.id} onClick={() => openDetail(item)}>
-                  <td className="col-photo">
-                    {item.photo_url && <img className="thumb" src={item.photo_url} alt="" />}
-                  </td>
-                  <td className="col-title">{item.title}</td>
-                  <td className="col-price">{item.price_formatted}</td>
-                  <td className="col-location">{item.location}</td>
-                  <td className="col-age">{timeAgo(item.posted_at)}</td>
-                  <td onClick={(e) => e.stopPropagation()}>
+                  <span className="card-status-badge" style={{ '--status-color': meta.color }}>
+                    <span className="dot" />
+                    {meta.label}
+                  </span>
+                  <span className="card-price-chip">{item.price_formatted}</span>
+                </div>
+                <div className="card-body">
+                  <h3 className="card-title">{item.title}</h3>
+                  <p className="card-meta">
+                    {item.location} · {timeAgo(item.posted_at)}
+                  </p>
+                  <div className="card-footer" onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       status={item.status || 'belum_dicek'}
                       onSelect={(status) => onUpdateStatus(item.id, status)}
                     />
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
       </div>
 
       {selected && (
@@ -313,7 +329,10 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
                   <h2>{selected.title}</h2>
                   <p className="modal-price">{selected.price_formatted}</p>
                 </div>
-                <span className="badge" style={{ '--status-color': selectedMeta.color }}>
+                <span
+                  className="badge"
+                  style={{ '--status-color': selectedMeta.color, '--pill-tint': selectedMeta.tint }}
+                >
                   <span className="badge-dot" />
                   {selectedMeta.label}
                 </span>
