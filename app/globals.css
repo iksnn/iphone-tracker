@@ -397,6 +397,8 @@ body {
 }
 
 .listing-card {
+  position: relative;
+  z-index: 1;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -408,9 +410,14 @@ body {
 
 .listing-card:hover,
 .listing-card:focus-visible {
+  z-index: 2;
   transform: translateY(-3px);
   box-shadow: 0 16px 32px -18px rgba(23, 20, 18, 0.25);
   border-color: var(--border-strong);
+}
+
+.listing-card.has-open-dropdown {
+  z-index: 40;
 }
 
 .listing-card:focus-visible {

@@ -31,12 +31,11 @@ function buildWaLink(phone, title, price) {
   return 'https://wa.me/' + phone + '?text=' + encodeURIComponent(message);
 }
 
-function StatusDropdown({ status, onSelect }) {
-  const [open, setOpen] = useState(false);
+function StatusDropdown({ status, open, onToggle, onClose, onSelect }) {
   const meta = STATUS_META[status] || STATUS_META.belum_dicek;
 
   function handleBlur(e) {
-    if (!e.currentTarget.contains(e.relatedTarget)) setOpen(false);
+    if (!e.currentTarget.contains(e.relatedTarget)) onClose();
   }
 
   return (
@@ -47,7 +46,7 @@ function StatusDropdown({ status, onSelect }) {
         style={{ '--pill-tint': meta.tint, '--pill-color': meta.color }}
         onClick={(e) => {
           e.stopPropagation();
-          setOpen((v) => !v);
+          onToggle();
         }}
         aria-haspopup="listbox"
         aria-expanded={open}
@@ -69,7 +68,7 @@ function StatusDropdown({ status, onSelect }) {
               className="status-dropdown-option"
               onClick={() => {
                 onSelect(s);
-                setOpen(false);
+                onClose();
               }}
             >
               <span className="status-dropdown-dot" style={{ '--dot-color': STATUS_META[s].color }} />
@@ -83,6 +82,7 @@ function StatusDropdown({ status, onSelect }) {
 }
 
 export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNotes }) {
+  const [openDropdownId, setOpenDropdownId] = useState(null);
   const [selected, setSelected] = useState(null);
   const [notesDraft, setNotesDraft] = useState('');
   const [dragY, setDragY] = useState(0);
@@ -266,10 +266,11 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
         ) : (
           sorted.map((item) => {
             const meta = STATUS_META[item.status] || STATUS_META.belum_dicek;
+            const isOpen = openDropdownId === item.id;
             return (
               <div
                 key={item.id}
-                className="listing-card"
+                className={`listing-card ${isOpen ? 'has-open-dropdown' : ''}`}
                 role="button"
                 tabIndex={0}
                 onClick={() => openDetail(item)}
@@ -299,6 +300,9 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
                   <div className="card-footer" onClick={(e) => e.stopPropagation()}>
                     <StatusDropdown
                       status={item.status || 'belum_dicek'}
+                      open={isOpen}
+                      onToggle={() => setOpenDropdownId(isOpen ? null : item.id)}
+                      onClose={() => setOpenDropdownId(null)}
                       onSelect={(status) => onUpdateStatus(item.id, status)}
                     />
                   </div>
