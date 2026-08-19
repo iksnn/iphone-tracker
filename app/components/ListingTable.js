@@ -1,5 +1,5 @@
 'use client';
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 
 const STATUS_OPTIONS = ['belum_dicek', 'nego', 'deal', 'ga_tertarik'];
 const STATUS_META = {
@@ -8,6 +8,13 @@ const STATUS_META = {
   deal: { label: 'Deal', color: 'var(--success)' },
   ga_tertarik: { label: 'Ga Tertarik', color: 'var(--danger)' },
 };
+
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'Terbaru' },
+  { value: 'oldest', label: 'Terlama' },
+  { value: 'price_asc', label: 'Harga Terendah' },
+  { value: 'price_desc', label: 'Harga Tertinggi' },
+];
 
 function timeAgo(dateStr) {
   if (!dateStr) return '';
@@ -79,6 +86,51 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
   const [dragY, setDragY] = useState(0);
   const dragStartY = useRef(null);
 
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('semua');
+  const [sortBy, setSortBy] = useState('newest');
+
+  const searched = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((item) => {
+      const title = (item.title || '').toLowerCase();
+      const location = (item.location || '').toLowerCase();
+      return title.includes(q) || location.includes(q);
+    });
+  }, [listings, search]);
+
+  const counts = useMemo(() => {
+    const c = { semua: searched.length, belum_dicek: 0, nego: 0, deal: 0, ga_tertarik: 0 };
+    for (const item of searched) {
+      const s = item.status || 'belum_dicek';
+      if (c[s] !== undefined) c[s] += 1;
+    }
+    return c;
+  }, [searched]);
+
+  const filtered = useMemo(() => {
+    if (statusFilter === 'semua') return searched;
+    return searched.filter((item) => (item.status || 'belum_dicek') === statusFilter);
+  }, [searched, statusFilter]);
+
+  const sorted = useMemo(() => {
+    const arr = [...filtered];
+    arr.sort((a, b) => {
+      if (sortBy === 'price_asc') return (a.price_amount || 0) - (b.price_amount || 0);
+      if (sortBy === 'price_desc') return (b.price_amount || 0) - (a.price_amount || 0);
+      const aTime = new Date(a.posted_at || 0).getTime();
+      const bTime = new Date(b.posted_at || 0).getTime();
+      return sortBy === 'oldest' ? aTime - bTime : bTime - aTime;
+    });
+    return arr;
+  }, [filtered, sortBy]);
+
+  function resetFilters() {
+    setSearch('');
+    setStatusFilter('semua');
+  }
+
   function openDetail(item) {
     setSelected(item);
     setNotesDraft(item.notes || '');
@@ -118,8 +170,74 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
     : null;
   const selectedMeta = selected ? STATUS_META[selected.status] || STATUS_META.belum_dicek : null;
 
+  const hasAnyListing = listings.length > 0;
+  const hasActiveFilter = search.trim() !== '' || statusFilter !== 'semua';
+
   return (
     <div>
+      {hasAnyListing && (
+        <>
+          <div className="toolbar">
+            <div className="search-field">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+                <circle cx="7" cy="7" r="5.5" stroke="#64748B" strokeWidth="1.4" />
+                <path d="M11.5 11.5L14.5 14.5" stroke="#64748B" strokeWidth="1.4" strokeLinecap="round" />
+              </svg>
+              <input
+                type="text"
+                placeholder="Cari judul atau lokasi…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="search-clear"
+                  onClick={() => setSearch('')}
+                  aria-label="Hapus pencarian"
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="sort-select">
+              <select value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                {SORT_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          <div className="filter-pills">
+            <button
+              type="button"
+              className={`filter-pill ${statusFilter === 'semua' ? 'active' : ''}`}
+              onClick={() => setStatusFilter('semua')}
+            >
+              Semua <span className="count">{counts.semua}</span>
+            </button>
+            {STATUS_OPTIONS.map((s) => (
+              <button
+                type="button"
+                key={s}
+                className={`filter-pill ${statusFilter === s ? 'active' : ''}`}
+                onClick={() => setStatusFilter(s)}
+              >
+                {STATUS_META[s].label} <span className="count">{counts[s]}</span>
+              </button>
+            ))}
+          </div>
+
+          <p className="results-meta">
+            Menampilkan {sorted.length} dari {listings.length} listing
+          </p>
+        </>
+      )}
+
       <div className="table-scroll">
         <table className="listing-table">
           <thead>
@@ -133,14 +251,27 @@ export default function ListingTable({ listings = [], onUpdateStatus, onUpdateNo
             </tr>
           </thead>
           <tbody>
-            {listings.length === 0 ? (
+            {!hasAnyListing ? (
               <tr>
                 <td colSpan={6} className="empty-state">
                   Belum ada listing. Klik &quot;Cari Listing Baru&quot; untuk mulai memantau.
                 </td>
               </tr>
+            ) : sorted.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="empty-state">
+                  Tidak ada listing yang cocok dengan pencarian atau filter.
+                  {hasActiveFilter && (
+                    <div className="empty-state-action">
+                      <button type="button" className="btn btn-outline btn-sm" onClick={resetFilters}>
+                        Hapus Filter
+                      </button>
+                    </div>
+                  )}
+                </td>
+              </tr>
             ) : (
-              listings.map((item) => (
+              sorted.map((item) => (
                 <tr key={item.id} onClick={() => openDetail(item)}>
                   <td className="col-photo">
                     {item.photo_url && <img className="thumb" src={item.photo_url} alt="" />}
