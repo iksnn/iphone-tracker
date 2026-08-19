@@ -1,19 +1,12 @@
 'use client';
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import RunButton from './RunButton';
 import ListingTable from './ListingTable';
 
-const POLL_INTERVAL_MS = 4000;
-const POLL_DURATION_MS = 60000;
-
 export default function DashboardClient() {
   const [listings, setListings] = useState([]);
-  const [submitting, setSubmitting] = useState(false);
-  const [polling, setPolling] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [runStatus, setRunStatus] = useState(null);
-
-  const pollTimer = useRef(null);
-  const pollDeadline = useRef(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -21,6 +14,7 @@ export default function DashboardClient() {
       const data = await res.json();
       setListings(data.listings || []);
     } catch {
+      // gagal diam-diam saat refresh latar belakang
     }
   }, []);
 
@@ -28,45 +22,35 @@ export default function DashboardClient() {
     loadData();
   }, [loadData]);
 
-  const stopPolling = useCallback(() => {
-    if (pollTimer.current) {
-      clearInterval(pollTimer.current);
-      pollTimer.current = null;
+  function messageForSummary(s) {
+    if (s.lolos === 0) {
+      return {
+        type: 'info',
+        text: `${s.total} listing diperiksa, tidak ada yang garansi resmi (${s.ditolak} ditolak)`,
+      };
     }
-    setPolling(false);
-  }, []);
-
-  const startPolling = useCallback(() => {
-    stopPolling();
-    setPolling(true);
-    pollDeadline.current = Date.now() + POLL_DURATION_MS;
-    pollTimer.current = setInterval(async () => {
-      await loadData();
-      if (Date.now() >= pollDeadline.current) {
-        stopPolling();
-        setRunStatus({ type: 'success', text: 'Data diperbarui' });
-      }
-    }, POLL_INTERVAL_MS);
-  }, [loadData, stopPolling]);
-
-  useEffect(() => stopPolling, [stopPolling]);
+    return {
+      type: 'success',
+      text: `${s.lolos} listing garansi resmi ditemukan dari ${s.total} diperiksa`,
+    };
+  }
 
   async function handleRun() {
-    setSubmitting(true);
+    setLoading(true);
     setRunStatus(null);
     try {
       const res = await fetch('/api/trigger-scrape', { method: 'POST' });
       const data = await res.json();
-      if (res.ok) {
-        setRunStatus({ type: 'info', text: 'Mencari listing baru…' });
-        startPolling();
-      } else {
+      if (!res.ok) {
         setRunStatus({ type: 'error', text: data.error || 'Gagal menjalankan workflow' });
+      } else {
+        setRunStatus(messageForSummary(data.summary));
+        await loadData();
       }
     } catch {
-      setRunStatus({ type: 'error', text: 'Gagal menjalankan workflow' });
+      setRunStatus({ type: 'error', text: 'Gagal menghubungi workflow' });
     } finally {
-      setSubmitting(false);
+      setLoading(false);
     }
   }
 
@@ -102,8 +86,7 @@ export default function DashboardClient() {
     }
   }
 
-  const loading = submitting || polling;
-  const label = submitting ? 'Menjalankan…' : polling ? 'Mencari listing…' : 'Cari Listing Baru';
+  const label = loading ? 'Menjalankan… (bisa beberapa menit)' : 'Cari Listing Baru';
 
   return (
     <>
