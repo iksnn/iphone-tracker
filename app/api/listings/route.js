@@ -25,7 +25,7 @@ export async function POST(req) {
       source: body.source || 'ai',
       posted_at: body.postedAt || null,
     },
-    { onConflict: 'id' } // otomatis anti-duplikat berdasarkan listing id
+    { onConflict: 'id' }
   );
 
   if (error) {

@@ -1,32 +1,46 @@
 # iPhone Resmi Tracker
 
-Web sederhana buat browsing listing iPhone garansi resmi dari Facebook Marketplace,
-diisi otomatis oleh workflow n8n kamu.
+Web buat mantau listing iPhone garansi resmi dari Facebook Marketplace di sekitar Tangerang. Scraping jalan otomatis lewat n8n, hasilnya disaring (keyword dulu, AI cuma dipanggil kalau belum pasti), terus kamu tinggal triage di sini — tandain status, catat progres nego, langsung chat WA penjualnya.
 
-## Setup (semua gratis)
+## Alurnya
 
-### 1. Supabase (database)
-1. Buat project baru di supabase.com (free tier).
-2. Buka SQL Editor, jalankan isi file `supabase-schema.sql`.
-3. Buka Project Settings > API, catat: `Project URL`, `anon public key`, `service_role key`.
+1. Tombol "Cari Listing Baru" di web memicu workflow n8n.
+2. n8n scrape Marketplace, filter berdasarkan jarak dari pusat Tangerang (radius 40km), lalu tentukan verdict garansi resmi atau bukan.
+3. Semua listing — verdict cocok atau tidak — disimpan ke Supabase, biar ada histori. Yang tampil di web cuma yang verdict-nya cocok.
+4. Workflow kirim balik ringkasan (berapa diperiksa, berapa lolos) ke web setelah selesai.
+
+## Stack
+
+- Next.js (App Router), CSS custom — di-deploy ke Vercel
+- Supabase buat database
+- n8n buat scraping dan filtering
+
+## Setup
+
+### 1. Supabase
+1. Buat project di supabase.com (free tier cukup).
+2. Jalankan `supabase-schema.sql` di SQL Editor.
+3. Catat `Project URL`, `anon public key`, `service_role key` dari Project Settings > API.
 
 ### 2. Deploy ke Vercel
-1. Push folder ini ke repo GitHub.
-2. Import repo di vercel.com (Hobby plan, gratis).
-3. Di Vercel > Settings > Environment Variables, isi sesuai `.env.example`:
+1. Push repo ini ke GitHub, import di vercel.com.
+2. Isi environment variables (contoh di `.env.example`):
    - `NEXT_PUBLIC_SUPABASE_URL`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - `SUPABASE_SERVICE_ROLE_KEY`
-   - `NEXT_PUBLIC_SITE_URL` (isi setelah deploy pertama, sesuai domain vercel kamu)
-   - `INGEST_SECRET` (string rahasia buatan sendiri, buat autentikasi n8n -> web)
-4. Deploy.
+   - `N8N_WEBHOOK_URL` — URL webhook trigger workflow
+   - `INGEST_SECRET` — string rahasia bikin sendiri, dipakai untuk autentikasi antara n8n dan web
+3. Deploy sekali dulu, catat domain-nya, isi `NEXT_PUBLIC_SITE_URL`, redeploy.
 
-### 3. Sambungkan dari n8n
-Ganti node **"Append row in sheet"** dengan node **HTTP Request**:
+### 3. Workflow n8n
+
+Urutan node: Webhook → scrape Marketplace → filter jarak & keyword → verdict (auto atau lewat AI) → tiap listing di-POST ke `/api/listings` → setelah loop selesai, hitung ringkasan dan balas ke Webhook lewat `/api/run-summary`.
+
+Node HTTP Request yang kirim listing:
 - Method: POST
 - URL: `https://nama-app-kamu.vercel.app/api/listings`
-- Headers: `Authorization: Bearer <INGEST_SECRET yang sama>`
-- Body (JSON):
+- Header: `Authorization: Bearer <INGEST_SECRET>`
+- Body:
 ```json
 {
   "id": "{{ $json.id }}",
@@ -44,13 +58,21 @@ Ganti node **"Append row in sheet"** dengan node **HTTP Request**:
 }
 ```
 
-Database otomatis anti-duplikat berdasarkan `id` listing (upsert) — jadi node
-"Get row(s) in sheet" + "filter duplikat" di n8n **tidak diperlukan lagi**,
-karena Supabase yang menangani itu.
+Catatan penting: node Webhook harus di-set respond **"Using Respond to Webhook Node"**, bukan "Immediately" — kalau tidak, web bakal dapat balasan kosong sebelum ringkasan hasil scrape sempat dihitung.
 
-## Jalan lokal (opsional, buat testing sebelum deploy)
-```
+Dedup otomatis lewat upsert berdasarkan `id` listing di Supabase, jadi node filter duplikat manual di n8n sudah tidak perlu lagi.
+
+## Jalan di lokal
+
 npm install
-cp .env.example .env.local   # isi dengan value asli
+cp .env.example .env.local # isi sendiri
 npm run dev
-```
+
+
+## Fitur di web
+
+- Cari listing, filter per status, sort (terbaru / terlama / harga)
+- Ubah status (belum dicek / nego / deal / ga tertarik) langsung dari grid
+- Catatan pribadi per listing
+- Tombol chat WA otomatis kalau nomor HP ketemu di deskripsi
+- Modal detail jadi bottom sheet di HP, responsive dari layar kecil sampai desktop

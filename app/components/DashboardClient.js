@@ -14,7 +14,6 @@ export default function DashboardClient() {
       const data = await res.json();
       setListings(data.listings || []);
     } catch {
-      // gagal diam-diam saat refresh latar belakang
     }
   }, []);
 
